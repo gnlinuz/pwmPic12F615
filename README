@@ -1,0 +1,30 @@
+Pic Microcontroller 12F615 - 617 manual and pwm squre wave generator.
+This will generate pwm frequencies: 500Hz, 1Khz, 4Khz, 10Khz, 50Khz,
+100Khz, 200Khz, 500Khz. All frequencies are set with 50% duty cycle.
+Frequencies and pwm settings:
+500Hz PR2=0xF9; TMR2=0x2; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=01111101 0x7D;
+1000Hz PR2=0x7C; TMR2=0x2; CCP1CON<DC1B1:DC1B0>=10 CCPR1L=00111110 0x3E
+4.0323Khz PR2=0x1E; TMR2=0x2; CCP1CON<DC1B1:DC1B0>=10 CCPR1L=00001111 0xF; 
+10.4167Khz PR2=0xC7; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=01100100 0x64;
+20Khz PR2=0x63; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00110010 0x32;
+50Khz PR2=0x9; TMR2=0x1; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00000101 0x5;
+100Khz PR2=0x13; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00001010 0xA;
+200Khz PR2=0x9; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00000101 0x5;
+500Khz PR2=0x3; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00000010 0x2;
+
+/* CONFIGURATION OF GPIO
+* GP2 - PWM OUTPUT P1A - PIN 5
+* GP1 - PULL UP IOC BUTTON - PIN 6
+* GP4 - PULL UP IOC BUTTON - PIN 3
+* GP5 - OUTPUT LED - PIN 2 */
+
+When the pic starts, pwm output at pin 5 with default frequency 500Hz
+and duty cycle 50%.
+Button(1) at pin 3 changes frequencies from 500Hz - 500Khz.
+Button(2) at pin 6 will stop PWM output making Button(1) sending 
+manual pulses. Pressing back Button(2) will start again PWM output.
+Use the Hex file to upload/program the pic 12F615 or pic12F617.
+This has been tested with Pickit 3, you can use any other compatible 
+programmer. Use the c file to make changes to the code and adjust
+it to your own needs. 
+enjoy!
