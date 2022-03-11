@@ -12,6 +12,10 @@ Frequencies and pwm settings:
 200Khz PR2=0x9; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00000101 0x5;
 500Khz PR2=0x3; TMR2=0x0; CCP1CON<DC1B1:DC1B0>=00 CCPR1L=00000010 0x2;
 
+Because this Pic is unable to create PWM frequencies less than 500Hz
+I used a TMR1 enchanced timer, creating interrupts adding 3 more 
+slow square wave frequencies of 20, 10, 5 Hz with 50% duty cycle.
+
 /* CONFIGURATION OF GPIO
 * GP2 - PWM OUTPUT P1A - PIN 5
 * GP1 - PULL UP IOC BUTTON - PIN 6
@@ -20,9 +24,12 @@ Frequencies and pwm settings:
 
 When the pic starts, pwm output at pin 5 with default frequency 500Hz
 and duty cycle 50%.
-Button(1) at pin 3 changes frequencies from 500Hz - 500Khz.
+Button(1) at pin 3 changes frequencies from 500Hz - 500Khz, and
+at the end 20, 10, 5 Hz additional low frequency square waves.
+
 Button(2) at pin 6 will stop PWM output making Button(1) sending 
 manual pulses. Pressing back Button(2) will start again PWM output.
+
 Use the Hex file to upload/program the pic 12F615 or pic12F617.
 This has been tested with Pickit 3, you can use any other compatible 
 programmer. Use the c file to make changes to the code and adjust

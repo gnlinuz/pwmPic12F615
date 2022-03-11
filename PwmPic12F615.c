@@ -38,10 +38,17 @@
 #define LED_OFF()                           (GPIObits.GP5 = 0)
 #define SEND_HIGH_CLOCK_PULSE()             (GPIObits.GP2 = 1)
 #define SEND_LOW_CLOCK_PULSE()              (GPIObits.GP2 = 0)
+#define TMR1_CLEAR_FLAG_INT()               (PIR1bits.TMR1IF = 0x0)
+#define ENABLE_TMR1_INT()                   (PIE1bits.TMR1IE = 0x1)
+#define TMR1_ON()                           (T1CONbits.TMR1ON = 0x1)
+#define TMR1_OFF()                          (T1CONbits.TMR1ON = 0x0)
+#define FOSC4_TMR1_CLOCK()                  (CMCON1bits.T1ACS = 0x0)
+#define TOGGLE_OUTPUT()          do { GPIObits.GP2 = ~GPIObits.GP2; } while(0)
 #define LED_Toggle()             do { GPIObits.GP5 = ~GPIObits.GP5; } while(0)
 #define DEBOUNCE_Button()        do { for(int i=0;i<20000; i++); } while(0)
 #define WAIT_FOR_NEW_PWM_CYCLE() do { while(PIR1bits.TMR2IF != 1); } while(0)
 
+//unsigned char prescale = 0;
 unsigned char lastPwmState = 1;
 unsigned char lastManualPulse = 1;
 unsigned char pwmSelect = 0;
@@ -70,8 +77,8 @@ unsigned char pwmFreq[36] = {0xF9,0x2,0xC,0x7D,
 void SYSTEM_Initialize(){
     /* CONFIGURATION OF GPIO
      * GP2 - PWM OUTPUT P1A - PIN 5
-     * GP1 - PULL UP IOC BUTTON - PIN 6
-     * GP4 - PULL UP IOC BUTTON - PIN 3
+     * GP1 - PULL UP IOC BUTTON - PIN 6 STOP/PWM BUTTON
+     * GP4 - PULL UP IOC BUTTON - PIN 3 SELECT/FREQ & MANUAL BUTTON
      * GP5 - OUTPUT LED - PIN 2 */
 
     ENABLE_DIGITAL_IO_Pins();/* disable analog enable digital pins */
@@ -148,19 +155,53 @@ void sendManualPulse(){
     LED_OFF();
 }
 
+void setTimerInt(unsigned char prescale){
+    TMR1_CLEAR_FLAG_INT();/* Make sure INT FLAG is cleared */
+    TMR1H = 0x3C;         /* Set 15535 in the HL TMR1 for 25mSec interrupt */
+    TMR1L = 0xAF;         /* 50000 * 5*10^-7 = 0.025Sec or 25mSec */
+    T1CON = prescale;     /* T1CKPS1:T1CKPS0: 1:1 40Hz, 1:2 10Hz, 1:4 5Hz
+                             T1OSCEN OFF 0
+                             T1SYNC ignored if TMR1CS = 0
+                             TMR1CS 0 Internal clock (FOSC/4)
+                             TMR1ON 0 currently stopped.*/
+    FOSC4_TMR1_CLOCK();   /* 0 = Timer 1 Clock Source is Instruction Clock (FOSC\4)*/
+    ENABLE_TMR1_INT();    /* Enable Overflow Interrupt Enable bit */
+    TMR1_ON();            /* TMR1 STARTS */
+}
+
+void settmr1hl(){
+    TMR1H = 0x3C;
+    TMR1L = 0xAF;
+}
+
+void stopTimer1(){
+    TMR1_OFF();
+    TMR1_CLEAR_FLAG_INT();
+    SEND_LOW_CLOCK_PULSE();
+}
+
 void __interrupt() ISR (void){
     if(INTCONbits.GPIF == 1 && GPIObits.GP1 == 0){
         DEBOUNCE_Button();
         if(lastPwmState == 1){
             LED_OFF();
             stopPwm();
+            stopTimer1();
             lastPwmState = 0;
         }
         else
        {
             LED_ON();
-            pwmInitialise(pwmSelect);
-            lastPwmState = 1;
+            if(pwmSelect > 32){
+                if(pwmSelect == 36)setTimerInt(4);
+                if(pwmSelect == 40)setTimerInt(20);
+                if(pwmSelect == 44)setTimerInt(36);
+                lastPwmState = 1;
+            }else
+            {
+                pwmInitialise(pwmSelect);
+                lastPwmState = 1;
+            }
         }
         GPIF_INT_InterruptFlagClear();
     }
@@ -172,16 +213,32 @@ void __interrupt() ISR (void){
         if(lastPwmState == 1){
             stopPwm();
             pwmSelect = pwmSelect + 4;
-            if(pwmSelect <= 32){
-                pwmInitialise(pwmSelect);
-            }
-            else
-            {
-                pwmSelect = 0;
-                pwmInitialise(pwmSelect);
+            if(pwmSelect <= 32){pwmInitialise(pwmSelect);}
+            switch(pwmSelect){
+                case 36:
+                    setTimerInt(4); // 1:1
+                    break;
+                case 40:
+                    TMR1_OFF();
+                    setTimerInt(20);// 1:2
+                    break;
+                case 44:
+                    TMR1_OFF();
+                    setTimerInt(36);// 1:4
+                    break;
+                case 48:
+                    stopTimer1();
+                    pwmSelect = 0;
+                    pwmInitialise(pwmSelect);
+                    break;
             }
         }
         GPIF_INT_InterruptFlagClear();
+    }
+    if(PIR1bits.TMR1IF){
+        TOGGLE_OUTPUT();
+        settmr1hl();
+        TMR1_CLEAR_FLAG_INT();
     }
 }
 
